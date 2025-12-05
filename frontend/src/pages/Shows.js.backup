@@ -1,0 +1,424 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+const GENRES = [
+  'All', 'Action', 'Adventure', 'Animation', 'Comedy', 'Crime',
+  'Documentary', 'Drama', 'Fantasy', 'Horror', 'Mystery',
+  'Romance', 'Sci-Fi', 'Thriller', 'Western', 'Musical',
+  'Biography', 'Family', 'History', 'War', 'Sports'
+];
+
+const PLATFORMS = [
+  'All', 'Netflix', 'HBO Max', 'Prime Video', 'Peacock', 
+  'Disney+', 'Hulu', 'Apple TV+', 'Paramount+'
+];
+
+function Shows() {
+  const [content, setContent] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedGenre, setSelectedGenre] = useState('All');
+  const [selectedPlatform, setSelectedPlatform] = useState('All');
+  const [selectedType, setSelectedType] = useState('All');
+  const [userPlatforms, setUserPlatforms] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [aiSearchActive, setAiSearchActive] = useState(false);
+  const [searchIntent, setSearchIntent] = useState(null);
+
+  useEffect(() => {
+    if (!aiSearchActive) {
+      fetchContent();
+    }
+  }, [selectedGenre, selectedPlatform, selectedType, aiSearchActive]);
+
+  const fetchContent = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      let url = '/api/content/by-genre?';
+      
+      if (selectedGenre && selectedGenre !== 'All') {
+        url += `genre=${selectedGenre}&`;
+      }
+      
+      const response = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      let filteredContent = response.data.content;
+      
+      // Filter by platform
+      if (selectedPlatform && selectedPlatform !== 'All') {
+        filteredContent = filteredContent.filter(item =>
+          item.platforms.some(p => p.name === selectedPlatform)
+        );
+      }
+      
+      // Filter by type
+      if (selectedType && selectedType !== 'All') {
+        filteredContent = filteredContent.filter(item => item.type === selectedType);
+      }
+      
+      setContent(filteredContent);
+      setUserPlatforms(response.data.userPlatforms || []);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to load content');
+      setLoading(false);
+    }
+  };
+
+  const handleAiSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) {
+      setError('Please enter a search query');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setAiSearchActive(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.post('/api/content/ai-search', 
+        { query: searchQuery },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setContent(response.data.results);
+      setSearchIntent(response.data.searchIntent);
+      setUserPlatforms(response.data.userPlatforms || []);
+      setLoading(false);
+      
+      if (response.data.resultsCount === 0) {
+        setError('No results found. Try a different search term.');
+        setTimeout(() => setError(''), 3000);
+      }
+    } catch (err) {
+      setError('AI search failed. Please try again.');
+      setLoading(false);
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setAiSearchActive(false);
+    setSearchIntent(null);
+    fetchContent();
+  };
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`/api/content/search/${searchQuery}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setContent(response.data);
+      setLoading(false);
+    } catch (err) {
+      setError('Search failed');
+      setLoading(false);
+    }
+  };
+
+  const addToWatchlist = async (contentItem) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post('/api/watchlist', 
+        { contentId: contentItem._id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSuccess(`Added "${contentItem.title}" to watchlist!`);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to add to watchlist');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  if (loading) {
+    return <div className="loading">Loading shows...</div>;
+  }
+
+  return (
+    <div className="container">
+      <div className="card">
+        <h2 style={{ color: '#667eea', marginBottom: '20px' }}>
+          🤖 AI-Powered Content Discovery
+        </h2>
+
+        {error && <div className="error" style={{ marginBottom: '20px' }}>{error}</div>}
+        {success && <div className="success" style={{ marginBottom: '20px' }}>{success}</div>}
+
+        {userPlatforms.length > 0 && (
+          <div style={{ background: '#e8f5e9', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+            <strong>✅ Your Active Subscriptions:</strong> {userPlatforms.join(', ')}
+          </div>
+        )}
+
+        {/* AI Search Bar */}
+        <form onSubmit={handleAiSearch} style={{ marginBottom: '20px' }}>
+          <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
+            <label style={{ display: 'block', color: 'white', marginBottom: '10px', fontSize: '16px', fontWeight: '600' }}>
+              🔍 AI Search - Try: "action movie", "sci-fi on Netflix", "stranger things", "funny show"
+            </label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <input
+                type="text"
+                placeholder="Ask AI to find shows and movies for you..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ 
+                  flex: 1, 
+                  padding: '14px', 
+                  borderRadius: '8px', 
+                  border: 'none',
+                  fontSize: '15px',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                }}
+              />
+              <button type="submit" className="btn" style={{ 
+                background: 'white', 
+                color: '#667eea',
+                fontWeight: '700',
+                padding: '0 30px'
+              }}>
+                🤖 AI Search
+              </button>
+              {aiSearchActive && (
+                <button 
+                  type="button" 
+                  onClick={clearSearch} 
+                  className="btn" 
+                  style={{ background: '#ff6b6b', color: 'white' }}
+                >
+                  ✕ Clear
+                </button>
+              )}
+            </div>
+          </div>
+        </form>
+
+        {/* AI Search Intent Display */}
+        {aiSearchActive && searchIntent && (
+          <div style={{ background: '#f0f4ff', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '2px solid #667eea' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#667eea' }}>🧠 AI understood your search:</h4>
+            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+              {searchIntent.title && (
+                <span style={{ background: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '14px' }}>
+                  📝 <strong>Title:</strong> {searchIntent.title}
+                </span>
+              )}
+              {searchIntent.type && (
+                <span style={{ background: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '14px' }}>
+                  🎭 <strong>Type:</strong> {searchIntent.type}
+                </span>
+              )}
+              {searchIntent.genres && searchIntent.genres.length > 0 && (
+                <span style={{ background: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '14px' }}>
+                  🎪 <strong>Genres:</strong> {searchIntent.genres.join(', ')}
+                </span>
+              )}
+              {searchIntent.platform && (
+                <span style={{ background: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '14px' }}>
+                  📺 <strong>Platform:</strong> {searchIntent.platform}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Filters - Only show when not in AI search mode */}
+        {!aiSearchActive && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '30px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Genre</label>
+              <select
+                value={selectedGenre}
+                onChange={(e) => setSelectedGenre(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '2px solid #e0e0e0' }}
+              >
+                {GENRES.map(genre => (
+                  <option key={genre} value={genre}>{genre}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Platform</label>
+              <select
+                value={selectedPlatform}
+                onChange={(e) => setSelectedPlatform(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '2px solid #e0e0e0' }}
+              >
+                {PLATFORMS.map(platform => (
+                  <option key={platform} value={platform}>{platform}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Type</label>
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '2px solid #e0e0e0' }}
+              >
+                <option value="All">All</option>
+                <option value="Movie">Movies</option>
+                <option value="TV Show">TV Shows</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* Content Grid */}
+        {content.length === 0 ? (
+          <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>
+            No content found. Try different filters or add some sample data!
+          </p>
+        ) : (
+          <div className="grid">
+            {content.map((item) => (
+              <div key={item._id || item.id} className="subscription-card">
+                <div style={{ marginBottom: '10px' }}>
+                  <h3 style={{ color: '#667eea', marginBottom: '5px' }}>{item.title}</h3>
+                  <span className="badge" style={{ background: item.type === 'Movie' ? '#e3f2fd' : '#f3e5f5', color: '#333' }}>
+                    {item.type}
+                  </span>
+                  {item.userHasAccess && (
+                    <span className="badge badge-active" style={{ marginLeft: '5px' }}>
+                      ✓ You have access
+                    </span>
+                  )}
+                  {aiSearchActive && item.relevanceScore && (
+                    <span className="badge" style={{ marginLeft: '5px', background: '#fff3cd', color: '#856404' }}>
+                      🎯 Score: {Math.round(item.relevanceScore)}
+                    </span>
+                  )}
+                </div>
+
+                {/* AI Recommendation Box */}
+                {aiSearchActive && item.aiRecommendation && (
+                  <div style={{ 
+                    background: item.aiRecommendation.userHasAccess ? '#d4edda' : '#fff3cd', 
+                    padding: '12px', 
+                    borderRadius: '8px', 
+                    marginBottom: '15px',
+                    border: `2px solid ${item.aiRecommendation.userHasAccess ? '#28a745' : '#ffc107'}`
+                  }}>
+                    <div style={{ 
+                      fontSize: '14px', 
+                      fontWeight: '600',
+                      color: item.aiRecommendation.userHasAccess ? '#155724' : '#856404',
+                      marginBottom: '8px'
+                    }}>
+                      {item.aiRecommendation.summary}
+                    </div>
+                    
+                    {item.aiRecommendation.bestOption && (
+                      <div style={{ fontSize: '13px', color: '#333' }}>
+                        <strong>{item.aiRecommendation.bestOption.platform}</strong>
+                        {item.aiRecommendation.bestOption.cost === 0 
+                          ? ' - FREE with your subscription!' 
+                          : ` - $${item.aiRecommendation.bestOption.cost}/month`}
+                      </div>
+                    )}
+
+                    {/* Show all available options */}
+                    {item.aiRecommendation.allOptions && item.aiRecommendation.allOptions.paid.length > 0 && (
+                      <details style={{ marginTop: '8px', fontSize: '12px' }}>
+                        <summary style={{ cursor: 'pointer', color: '#666' }}>
+                          See all {item.aiRecommendation.allOptions.paid.length + item.aiRecommendation.allOptions.free.length} options
+                        </summary>
+                        <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {item.aiRecommendation.allOptions.free.map((opt, idx) => (
+                            <div key={idx}>✅ {opt.platform} - {opt.status}</div>
+                          ))}
+                          {item.aiRecommendation.allOptions.paid.map((opt, idx) => (
+                            <div key={idx}>💰 {opt.platform} - ${opt.cost}/month</div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                )}
+
+                {item.description && (
+                  <p style={{ fontSize: '14px', color: '#666', marginBottom: '15px', lineHeight: '1.5' }}>
+                    {item.description.substring(0, 150)}{item.description.length > 150 ? '...' : ''}
+                  </p>
+                )}
+
+                <div style={{ marginBottom: '15px' }}>
+                  <strong style={{ fontSize: '14px' }}>Genres:</strong>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '5px' }}>
+                    {item.genres.map((genre, idx) => (
+                      <span key={idx} style={{ 
+                        background: '#f0f0f0', 
+                        padding: '4px 8px', 
+                        borderRadius: '12px', 
+                        fontSize: '12px' 
+                      }}>
+                        {genre}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Only show platform badges when not in AI mode (AI shows recommendations instead) */}
+                {!aiSearchActive && (
+                  <div style={{ marginBottom: '15px' }}>
+                    <strong style={{ fontSize: '14px' }}>Available on:</strong>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '5px' }}>
+                      {item.platforms.map((platform, idx) => (
+                        <span key={idx} style={{ 
+                          background: userPlatforms.includes(platform.name) ? '#d4edda' : '#fff3cd',
+                          color: userPlatforms.includes(platform.name) ? '#155724' : '#856404',
+                          padding: '4px 8px', 
+                          borderRadius: '12px', 
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}>
+                          {platform.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {item.rating && (
+                  <p style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>
+                    ⭐ Rating: {item.rating}/10
+                  </p>
+                )}
+
+                {item.releaseYear && (
+                  <p style={{ fontSize: '14px', color: '#666', marginBottom: '15px' }}>
+                    📅 {item.releaseYear}
+                  </p>
+                )}
+
+                <button 
+                  onClick={() => addToWatchlist(item)}
+                  className="btn btn-primary"
+                  style={{ width: '100%' }}
+                >
+                  + Add to Watchlist
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default Shows;
