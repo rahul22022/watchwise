@@ -47,8 +47,17 @@ const watchlistSchema = new mongoose.Schema({
   }
 });
 
-// Ensure user doesn't add same content twice
-watchlistSchema.index({ user: 1, content: 1 }, { unique: true, sparse: true });
-watchlistSchema.index({ user: 1, customTitle: 1 }, { unique: true, sparse: true });
+// Create compound indexes for uniqueness
+// For content-based items (from database)
+watchlistSchema.index({ user: 1, content: 1 }, { 
+  unique: true,
+  partialFilterExpression: { content: { $type: 'objectId' } }
+});
+
+// For custom title items (user-added)
+watchlistSchema.index({ user: 1, customTitle: 1 }, { 
+  unique: true,
+  partialFilterExpression: { customTitle: { $type: 'string' } }
+});
 
 module.exports = mongoose.model('Watchlist', watchlistSchema);

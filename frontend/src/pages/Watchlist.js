@@ -30,12 +30,20 @@ function Watchlist() {
         url += `?status=${filterStatus}`;
       }
       
+      console.log('📋 Fetching watchlist from:', url);
       const response = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      console.log('✅ Watchlist received:', response.data.length, 'items');
+      console.log('Items:', response.data.map(item => ({ 
+        id: item._id, 
+        title: item.customTitle || item.content?.title,
+        status: item.status 
+      })));
       setWatchlist(response.data);
       setLoading(false);
     } catch (err) {
+      console.error('❌ Error fetching watchlist:', err);
       setError('Failed to load watchlist');
       setLoading(false);
     }
@@ -88,12 +96,19 @@ function Watchlist() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      await axios.post('/api/watchlist',
+      console.log('➕ Adding custom entry:', customEntry);
+      const response = await axios.post('/api/watchlist',
         customEntry,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      setSuccess('Added to watchlist!');
+      console.log('✅ Custom entry response:', response.data);
+      
+      if (response.data.existing) {
+        setSuccess('This item is already in your watchlist!');
+      } else {
+        setSuccess('✅ Added to watchlist!');
+      }
       setCustomEntry({
         customTitle: '',
         customType: 'Movie',
@@ -105,6 +120,7 @@ function Watchlist() {
       fetchWatchlist();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
+      console.error('❌ Error adding custom entry:', err);
       setError(err.response?.data?.message || 'Failed to add to watchlist');
     }
   };
@@ -147,12 +163,21 @@ function Watchlist() {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ color: '#667eea', fontSize: '28px', fontWeight: '700' }}>My Watchlist</h2>
-          <button 
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="btn btn-primary"
-          >
-            {showAddForm ? 'Cancel' : '+ Add to Watchlist'}
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              onClick={fetchWatchlist}
+              className="btn"
+              style={{ background: '#4caf50', color: 'white' }}
+            >
+              🔄 Refresh
+            </button>
+            <button 
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="btn btn-primary"
+            >
+              {showAddForm ? 'Cancel' : '+ Add to Watchlist'}
+            </button>
+          </div>
         </div>
 
         {error && <div className="error" style={{ marginBottom: '20px' }}>{error}</div>}
@@ -287,11 +312,50 @@ function Watchlist() {
 
         {/* Watchlist Items */}
         {watchlist.length === 0 ? (
-          <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>
-            No items in your watchlist. Start adding shows and movies!
-          </p>
+          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>📺</div>
+            <h3 style={{ color: '#666', marginBottom: '15px' }}>Your Watchlist is Empty</h3>
+            <p style={{ color: '#999', marginBottom: '30px' }}>
+              Add shows and movies from Interests page or search above
+            </p>
+          </div>
         ) : (
-          <div className="grid">
+          <>
+            {/* Watchlist Stats */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+              gap: '15px', 
+              marginBottom: '30px',
+              padding: '20px',
+              background: '#f5f7ff',
+              borderRadius: '8px'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#667eea' }}>{watchlist.length}</div>
+                <div style={{ fontSize: '13px', color: '#666' }}>Total Items</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#ff9800' }}>
+                  {watchlist.filter(i => i.status === 'Want to Watch').length}
+                </div>
+                <div style={{ fontSize: '13px', color: '#666' }}>Want to Watch</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#4caf50' }}>
+                  {watchlist.filter(i => i.status === 'Currently Watching').length}
+                </div>
+                <div style={{ fontSize: '13px', color: '#666' }}>Watching</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#9e9e9e' }}>
+                  {watchlist.filter(i => i.status === 'Completed').length}
+                </div>
+                <div style={{ fontSize: '13px', color: '#666' }}>Completed</div>
+              </div>
+            </div>
+
+            <div className="grid">
             {watchlist.map((item) => {
               const title = item.content?.title || item.customTitle;
               const type = item.content?.type || item.customType;
@@ -368,6 +432,7 @@ function Watchlist() {
               );
             })}
           </div>
+          </>
         )}
       </div>
     </div>

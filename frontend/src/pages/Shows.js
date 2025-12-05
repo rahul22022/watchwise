@@ -245,13 +245,19 @@ function Shows() {
           }
         : { contentId: contentItem._id };
       
-      await axios.post('/api/watchlist', 
+      const response = await axios.post('/api/watchlist', 
         contentData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setSuccess(`Added "${contentItem.title}" to watchlist!`);
+      
+      if (response.data.existing) {
+        setSuccess(`"${contentItem.title}" is already in your watchlist!`);
+      } else {
+        setSuccess(`✅ Added "${contentItem.title}" to watchlist!`);
+      }
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
+      console.error('Error adding to watchlist:', err);
       setError(err.response?.data?.message || 'Failed to add to watchlist');
       setTimeout(() => setError(''), 3000);
     }

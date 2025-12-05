@@ -18,8 +18,11 @@ const getWatchlist = async (req, res) => {
       .populate('content')
       .sort({ addedAt: -1 });
     
+    console.log(`📋 Retrieved watchlist for user ${req.user._id}: ${watchlist.length} items`);
+    
     res.json(watchlist);
   } catch (error) {
+    console.error('❌ Error getting watchlist:', error.message);
     res.status(500).json({ message: error.message });
   }
 };
@@ -30,6 +33,35 @@ const getWatchlist = async (req, res) => {
 const addToWatchlist = async (req, res) => {
   try {
     const { contentId, customTitle, customType, status, priority, notes } = req.body;
+    
+    console.log('📝 Adding to watchlist:', { userId: req.user._id, contentId, customTitle, customType });
+    
+    // Check for existing watchlist item
+    if (contentId) {
+      const existing = await Watchlist.findOne({ user: req.user._id, content: contentId });
+      if (existing) {
+        console.log('⚠️  Item already exists (by contentId):', existing._id);
+        return res.status(200).json({ 
+          message: 'This item is already in your watchlist',
+          existing: true,
+          item: existing
+        });
+      }
+    } else if (customTitle) {
+      // Case-insensitive check for custom titles
+      const existing = await Watchlist.findOne({ 
+        user: req.user._id, 
+        customTitle: { $regex: new RegExp(`^${customTitle}$`, 'i') }
+      });
+      if (existing) {
+        console.log('⚠️  Item already exists (by customTitle):', existing._id);
+        return res.status(200).json({ 
+          message: 'This item is already in your watchlist',
+          existing: true,
+          item: existing
+        });
+      }
+    }
     
     // Get user's active subscriptions
     const userSubscriptions = await Subscription.find({ 
@@ -64,22 +96,28 @@ const addToWatchlist = async (req, res) => {
     
     const watchlistItem = await Watchlist.create({
       user: req.user._id,
-      content: contentId,
-      customTitle,
-      customType,
+      content: contentId || undefined,
+      customTitle: customTitle || undefined,
+      customType: customType || undefined,
       status: status || 'Want to Watch',
       priority: priority || 'Medium',
-      notes,
+      notes: notes || undefined,
       recommendedPlatforms
     });
+    
+    console.log('✅ Watchlist item created:', watchlistItem._id, '- Title:', customTitle || 'N/A');
     
     const populated = await Watchlist.findById(watchlistItem._id).populate('content');
     res.status(201).json(populated);
   } catch (error) {
+    console.error('❌ Error adding to watchlist:', error.message, error.code);
     if (error.code === 11000) {
-      return res.status(400).json({ message: 'Item already in watchlist' });
+      return res.status(200).json({ 
+        message: 'This item is already in your watchlist',
+        existing: true
+      });
     }
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message, error: error.toString() });
   }
 };
 

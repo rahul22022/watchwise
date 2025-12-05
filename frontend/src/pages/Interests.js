@@ -12,6 +12,7 @@ function Interests() {
   const [interests, setInterests] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState('preferences'); // 'preferences' or 'recommendations'
   const [recommendations, setRecommendations] = useState([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [userPlatforms, setUserPlatforms] = useState([]);
@@ -165,6 +166,36 @@ function Interests() {
     }
   };
 
+  const addToWatchlist = async (item) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const watchlistData = {
+        customTitle: item.title,
+        customType: item.type || 'Movie',
+        status: 'Want to Watch',
+        priority: 'Medium',
+        notes: `${item.description || ''}\n\nGenres: ${(item.genres || []).join(', ')}\nPlatform: ${item.platform || 'Unknown'}\nRating: ${item.rating || 'N/A'}`
+      };
+
+      const response = await axios.post('/api/watchlist', watchlistData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.existing) {
+        setSuccess(`"${item.title}" is already in your watchlist!`);
+      } else {
+        setSuccess(`Added "${item.title}" to watchlist!`);
+      }
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      console.error('Error adding to watchlist:', err);
+      const errorMsg = err.response?.data?.message || 'Failed to add to watchlist';
+      setError(errorMsg);
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading interests...</div>;
   }
@@ -172,22 +203,74 @@ function Interests() {
   return (
     <div className="container">
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ color: '#667eea' }}>My Interests</h2>
-          {!editing && interests && (
-            <button 
-              onClick={() => setEditing(true)} 
-              className="btn btn-primary"
+        {/* Header with Tabs */}
+        <div style={{ marginBottom: '30px' }}>
+          <h2 style={{ color: '#667eea', marginBottom: '20px' }}>My Interests & Recommendations</h2>
+          
+          {/* Tab Navigation */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '10px', 
+            borderBottom: '2px solid #e0e0e0',
+            marginBottom: '20px'
+          }}>
+            <button
+              onClick={() => setActiveTab('preferences')}
+              style={{
+                padding: '12px 24px',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'preferences' ? '3px solid #667eea' : '3px solid transparent',
+                color: activeTab === 'preferences' ? '#667eea' : '#666',
+                fontWeight: activeTab === 'preferences' ? '600' : '400',
+                fontSize: '16px',
+                cursor: 'pointer',
+                transition: 'all 0.3s'
+              }}
             >
-              Edit Interests
+              My Preferences
             </button>
-          )}
+            <button
+              onClick={() => {
+                setActiveTab('recommendations');
+                if (recommendations.length === 0 && !loadingRecs) {
+                  fetchRecommendations();
+                }
+              }}
+              style={{
+                padding: '12px 24px',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'recommendations' ? '3px solid #667eea' : '3px solid transparent',
+                color: activeTab === 'recommendations' ? '#667eea' : '#666',
+                fontWeight: activeTab === 'recommendations' ? '600' : '400',
+                fontSize: '16px',
+                cursor: 'pointer',
+                transition: 'all 0.3s'
+              }}
+            >
+              Recommendations ({recommendations.length})
+            </button>
+          </div>
         </div>
 
         {error && <div className="error" style={{ marginBottom: '20px' }}>{error}</div>}
         {success && <div className="success" style={{ marginBottom: '20px' }}>{success}</div>}
 
-        {editing ? (
+        {/* Preferences Tab */}
+        {activeTab === 'preferences' && (
+          <div>
+            {!editing && interests && (
+              <button 
+                onClick={() => setEditing(true)} 
+                className="btn btn-primary"
+                style={{ marginBottom: '20px' }}
+              >
+                Edit Preferences
+              </button>
+            )}
+
+            {editing ? (
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label>Favorite Genres</label>
@@ -370,162 +453,198 @@ function Interests() {
             No interests set yet. Add your interests to get personalized recommendations!
           </p>
         )}
-      </div>
+        </div>
+      )}
 
-      {/* Recommendations Section */}
-      {!editing && interests && interests.genres.length > 0 && (
-        <div className="card" style={{ marginTop: '30px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ color: '#667eea', fontSize: '28px', fontWeight: '700' }}>Top 10 Recommendations</h2>
-            <button 
-              onClick={fetchRecommendations} 
-              className="btn btn-primary"
-              disabled={loadingRecs}
-            >
-              {loadingRecs ? 'Loading...' : 'Refresh'}
-            </button>
-          </div>
+      {/* Recommendations Tab */}
+      {activeTab === 'recommendations' && (
+        <div>
+          {interests && interests.genres.length > 0 ? (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ color: '#667eea', fontSize: '24px', fontWeight: '600' }}>Top 10 Recommendations</h3>
+                <button 
+                  onClick={fetchRecommendations} 
+                  className="btn btn-primary"
+                  disabled={loadingRecs}
+                >
+                  {loadingRecs ? 'Loading...' : 'Refresh'}
+                </button>
+              </div>
 
-          {userPlatforms.length > 0 && (
-            <div style={{ background: '#e8f5e9', padding: '15px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px' }}>
-              <strong style={{ color: '#2e7d32' }}>Based on your subscriptions:</strong> <span style={{ color: '#555' }}>{userPlatforms.join(', ')}</span>
-            </div>
-          )}
+              {userPlatforms.length > 0 && (
+                <div style={{ background: '#e8f5e9', padding: '15px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px' }}>
+                  <strong style={{ color: '#2e7d32' }}>Based on your subscriptions:</strong> <span style={{ color: '#555' }}>{userPlatforms.join(', ')}</span>
+                </div>
+              )}
 
-          <p style={{ color: '#666', marginBottom: '20px', fontSize: '15px' }}>
-            Personalized picks based on your selected genres: <strong>{interests.genres.join(', ')}</strong>
-          </p>
-
-          {loadingRecs ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-              Loading recommendations...
-            </div>
-          ) : recommendations.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <h3 style={{ color: '#666', marginBottom: '10px' }}>No recommendations yet</h3>
-              <p style={{ color: '#999', fontSize: '14px' }}>
-                Add subscriptions and update your genre preferences to get personalized recommendations
+              <p style={{ color: '#666', marginBottom: '20px', fontSize: '15px' }}>
+                Personalized picks based on your selected genres: <strong>{interests.genres.join(', ')}</strong>
               </p>
-            </div>
-          ) : (
-            <div className="grid">
-              {recommendations.map((item, index) => {
-                const platformNames = item.platform ? [item.platform] : [];
-                const hasAccess = platformNames.some(p => userPlatforms.includes(p));
 
-                return (
-                  <div key={item._id} className="content-card" style={{ 
-                    border: hasAccess ? '2px solid #4caf50' : '1px solid #ddd',
-                    position: 'relative'
-                  }}>
-                    <div style={{ 
-                      position: 'absolute', 
-                      top: '12px', 
-                      left: '12px', 
-                      background: '#667eea', 
-                      color: 'white', 
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '14px',
-                      fontWeight: '700'
-                    }}>
-                      #{index + 1}
-                    </div>
+              {loadingRecs ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                  Loading recommendations...
+                </div>
+              ) : recommendations.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                  <h3 style={{ color: '#666', marginBottom: '10px' }}>No recommendations yet</h3>
+                  <p style={{ color: '#999', fontSize: '14px' }}>
+                    Click refresh to load personalized recommendations
+                  </p>
+                </div>
+              ) : (
+                <div className="grid">
+                  {recommendations.map((item, index) => {
+                    const platformNames = item.platform ? [item.platform] : [];
+                    const hasAccess = platformNames.some(p => userPlatforms.includes(p));
 
-                    {hasAccess && (
-                      <div style={{ 
-                        position: 'absolute', 
-                        top: '12px', 
-                        right: '12px', 
-                        background: '#4caf50', 
-                        color: 'white', 
-                        padding: '5px 12px', 
-                        borderRadius: '20px',
-                        fontSize: '11px',
-                        fontWeight: '600',
-                        letterSpacing: '0.5px'
+                    return (
+                      <div key={item._id} className="content-card" style={{ 
+                        border: hasAccess ? '2px solid #4caf50' : '1px solid #ddd',
+                        position: 'relative'
                       }}>
-                        YOU HAVE ACCESS
-                      </div>
-                    )}
-                    
-                    <a 
-                      href={`https://www.imdb.com/find?q=${encodeURIComponent(item.title)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ textDecoration: 'none' }}
-                    >
-                      <h3 style={{ marginTop: '35px', marginBottom: '10px', color: '#667eea', cursor: 'pointer' }}>
-                        {item.title}
-                      </h3>
-                    </a>
-                    
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                      <span style={{ background: '#e3f2fd', color: '#1976d2', padding: '4px 10px', borderRadius: '4px', fontSize: '13px' }}>
-                        {item.type}
-                      </span>
-                      {item.rating && (
-                        <span style={{ background: '#fff3e0', color: '#f57c00', padding: '4px 10px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>
-                          {item.rating} / 10
-                        </span>
-                      )}
-                      {item.releaseYear && (
-                        <span style={{ background: '#f3e5f5', color: '#7b1fa2', padding: '4px 10px', borderRadius: '4px', fontSize: '13px' }}>
-                          {item.releaseYear}
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={{ marginBottom: '10px' }}>
-                      {(item.genres || []).map((genre, idx) => (
-                        <span key={idx} style={{ 
-                          display: 'inline-block',
-                          background: '#f5f5f5', 
-                          padding: '3px 8px', 
-                          borderRadius: '3px', 
-                          fontSize: '12px',
-                          marginRight: '5px',
-                          marginBottom: '5px'
+                        <div style={{ 
+                          position: 'absolute', 
+                          top: '12px', 
+                          left: '12px', 
+                          background: '#667eea', 
+                          color: 'white', 
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '14px',
+                          fontWeight: '700'
                         }}>
-                          {genre}
-                        </span>
-                      ))}
-                    </div>
+                          #{index + 1}
+                        </div>
 
-                    {item.description && (
-                      <p style={{ fontSize: '14px', color: '#666', marginBottom: '15px', lineHeight: '1.5' }}>
-                        {item.description.substring(0, 100)}{item.description.length > 100 ? '...' : ''}
-                      </p>
-                    )}
+                        {hasAccess && (
+                          <div style={{ 
+                            position: 'absolute', 
+                            top: '12px', 
+                            right: '12px', 
+                            background: '#4caf50', 
+                            color: 'white', 
+                            padding: '5px 12px', 
+                            borderRadius: '20px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            letterSpacing: '0.5px'
+                          }}>
+                            YOU HAVE ACCESS
+                          </div>
+                        )}
+                        
+                        <a 
+                          href={`https://www.imdb.com/find?q=${encodeURIComponent(item.title)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ textDecoration: 'none' }}
+                        >
+                          <h3 style={{ marginTop: '35px', marginBottom: '10px', color: '#667eea', cursor: 'pointer' }}>
+                            {item.title}
+                          </h3>
+                        </a>
+                        
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                          <span style={{ background: '#e3f2fd', color: '#1976d2', padding: '4px 10px', borderRadius: '4px', fontSize: '13px' }}>
+                            {item.type}
+                          </span>
+                          {item.rating && (
+                            <span style={{ background: '#fff3e0', color: '#f57c00', padding: '4px 10px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>
+                              {item.rating} / 10
+                            </span>
+                          )}
+                          {item.releaseYear && (
+                            <span style={{ background: '#f3e5f5', color: '#7b1fa2', padding: '4px 10px', borderRadius: '4px', fontSize: '13px' }}>
+                              {item.releaseYear}
+                            </span>
+                          )}
+                        </div>
 
-                    <div style={{ borderTop: '1px solid #eee', paddingTop: '10px', marginTop: '10px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px', color: '#555' }}>
-                        Available on:
+                        <div style={{ marginBottom: '10px' }}>
+                          {(item.genres || []).map((genre, idx) => (
+                            <span key={idx} style={{ 
+                              display: 'inline-block',
+                              background: '#f5f5f5', 
+                              padding: '3px 8px', 
+                              borderRadius: '3px', 
+                              fontSize: '12px',
+                              marginRight: '5px',
+                              marginBottom: '5px'
+                            }}>
+                              {genre}
+                            </span>
+                          ))}
+                        </div>
+
+                        {item.description && (
+                          <p style={{ fontSize: '14px', color: '#666', marginBottom: '15px', lineHeight: '1.5' }}>
+                            {item.description.substring(0, 100)}{item.description.length > 100 ? '...' : ''}
+                          </p>
+                        )}
+
+                        <div style={{ borderTop: '1px solid #eee', paddingTop: '10px', marginTop: '10px' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px', color: '#555' }}>
+                            Available on:
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            <span style={{ 
+                              background: userPlatforms.includes(item.platform) ? '#4caf50' : '#9e9e9e',
+                              color: 'white',
+                              padding: '4px 10px',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              fontWeight: '600'
+                            }}>
+                              {item.platform}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => addToWatchlist(item)}
+                          className="btn btn-primary"
+                          style={{ 
+                            width: '100%', 
+                            marginTop: '15px',
+                            padding: '10px',
+                            fontSize: '14px',
+                            fontWeight: '600'
+                          }}
+                        >
+                          Add to Watchlist
+                        </button>
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                        <span style={{ 
-                          background: userPlatforms.includes(item.platform) ? '#4caf50' : '#9e9e9e',
-                          color: 'white',
-                          padding: '4px 10px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '600'
-                        }}>
-                          {item.platform}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+              <h3 style={{ color: '#666', marginBottom: '15px' }}>Set Your Preferences First</h3>
+              <p style={{ color: '#999', marginBottom: '20px' }}>
+                Select your favorite genres to get personalized recommendations
+              </p>
+              <button
+                onClick={() => {
+                  setActiveTab('preferences');
+                  setEditing(true);
+                }}
+                className="btn btn-primary"
+              >
+                Set Preferences
+              </button>
             </div>
           )}
         </div>
       )}
+    </div>
     </div>
   );
 }

@@ -43,6 +43,7 @@ app.use('/api/interests', require('./routes/interests'));
 app.use('/api/content', require('./routes/content'));
 app.use('/api/watchlist', require('./routes/watchlist'));
 app.use('/api/network', require('./routes/network'));
+app.use('/api/optimization', require('./routes/optimization'));
 
 // Serve static files from React build in production
 if (process.env.NODE_ENV === 'production') {
