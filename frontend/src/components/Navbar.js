@@ -4,7 +4,13 @@ import { Link } from 'react-router-dom';
 function Navbar({ user, onLogout }) {
   return (
     <div className="navbar">
-      <h1>WatchWise</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <img src="/logo.svg" alt="WatchWise" style={{ width: '40px', height: '40px' }} />
+        <div>
+          <h1 style={{ margin: 0, fontSize: '24px' }}>WatchWise</h1>
+          <p style={{ margin: 0, fontSize: '11px', color: '#667eea', fontStyle: 'italic' }}>Optimize Your Watchlist</p>
+        </div>
+      </div>
       <nav>
         <Link to="/subscriptions">Subscriptions</Link>
         <Link to="/shows">Shows</Link>

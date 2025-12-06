@@ -41,12 +41,33 @@ exports.getOptimizationRecommendations = async (req, res) => {
         preferredContentType: interests.preferredContentType,
         watchingTime: interests.watchingTime
       } : null,
-      watchlist: watchlist.map(item => ({
-        customTitle: item.customTitle,
-        platform: item.recommendedPlatforms?.[0]?.platform || item.platform || 'Unknown',
-        type: item.customType || item.type,
-        status: item.status
-      }))
+      watchlist: watchlist.map(item => {
+        // Try to get platform from multiple sources in priority order
+        let platform = 'Unknown';
+        
+        // 1. Check direct platform field (user-specified)
+        if (item.platform) {
+          platform = item.platform;
+        }
+        // 2. Check recommendedPlatforms from content matching
+        else if (item.recommendedPlatforms && item.recommendedPlatforms.length > 0) {
+          platform = item.recommendedPlatforms[0].platform;
+        }
+        // 3. Try to extract from notes
+        else if (item.notes) {
+          const platformMatch = item.notes.match(/From ([A-Za-z+ ]+)/);
+          if (platformMatch) {
+            platform = platformMatch[1].trim();
+          }
+        }
+        
+        return {
+          customTitle: item.customTitle,
+          platform: platform,
+          type: item.customType || item.type,
+          status: item.status
+        };
+      })
     };
 
     // Get recommendations from optimizer service

@@ -9,12 +9,30 @@ const Recommendations = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeView, setActiveView] = useState('schedule'); // 'schedule', 'savings', 'rotation'
+  const [taglineIndex, setTaglineIndex] = useState(0);
   const navigate = useNavigate();
+
+  const taglines = [
+    "Your couch gets the binges, your wallet gets the breaks.",
+    "We count your subscriptions so you don't lose count of your money.",
+    "Making sure the only thing you're streaming is content, not cash.",
+    "For people whose subscriptions have subscriptions.",
+    "Turning 'free trial' into 'I actually remembered to cancel.'",
+    "Helping you watch everything, except your money disappear."
+  ];
 
   useEffect(() => {
     fetchOptimizationData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    // Cycle taglines every 4 seconds
+    const interval = setInterval(() => {
+      setTaglineIndex((prev) => (prev + 1) % taglines.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [taglines.length]);
 
   const fetchOptimizationData = async () => {
     try {
@@ -149,9 +167,17 @@ const Recommendations = () => {
       {/* Header */}
       <div className="card" style={{ marginBottom: '20px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
-          <div>
+          <div style={{ flex: 1 }}>
             <h1 style={{ marginBottom: '10px', fontSize: '32px' }}>💰 Subscription Optimizer</h1>
-            <p style={{ fontSize: '16px', opacity: 0.9 }}>AI-powered recommendations to save money on your subscriptions</p>
+            <p style={{ 
+              fontSize: '16px', 
+              opacity: 0.9, 
+              fontStyle: 'italic',
+              minHeight: '24px',
+              transition: 'opacity 0.5s ease-in-out'
+            }}>
+              {taglines[taglineIndex]}
+            </p>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '14px', opacity: 0.8, marginBottom: '5px' }}>Current Monthly Spending</div>
@@ -373,21 +399,32 @@ const Recommendations = () => {
                           <span style={{ color: '#2e7d32' }}>
                             {item.title} ({item.platform})
                           </span>
-                          <button
-                            onClick={() => addToWatchlist(item)}
-                            style={{
-                              padding: '2px 8px',
-                              background: '#4caf50',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '8px',
-                              fontSize: '11px',
-                              cursor: 'pointer',
-                              fontWeight: '600'
-                            }}
-                          >
-                            + Track
-                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Waiting Content - Not available this month */}
+                {month.waitingContent && month.waitingContent.length > 0 && (
+                  <div style={{ marginTop: '15px', padding: '12px', background: 'rgba(255,243,224,0.6)', borderRadius: '6px' }}>
+                    <div style={{ fontSize: '13px', color: '#ff9800', marginBottom: '8px', fontWeight: '600' }}>
+                      ⏳ Wait for Later ({month.waitingCount} titles):
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {month.waitingContent.map((item, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            padding: '4px 10px',
+                            background: 'white',
+                            border: '1px solid #ff9800',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            color: '#e65100'
+                          }}
+                        >
+                          {item.title} ({item.platform})
                         </div>
                       ))}
                     </div>

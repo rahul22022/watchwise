@@ -1,0 +1,41 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Bowl -->
+  <ellipse cx="100" cy="140" rx="70" ry="15" fill="#FFD700" stroke="#000" stroke-width="3"/>
+  <path d="M 30 140 Q 30 100 100 100 Q 170 100 170 140" fill="#FFA500" stroke="#000" stroke-width="3"/>
+  
+  <!-- Popcorn -->
+  <circle cx="70" cy="110" r="12" fill="#FFF8DC" stroke="#000" stroke-width="2"/>
+  <circle cx="90" cy="105" r="13" fill="#FFFACD" stroke="#000" stroke-width="2"/>
+  <circle cx="110" cy="105" r="13" fill="#FFF8DC" stroke="#000" stroke-width="2"/>
+  <circle cx="130" cy="110" r="12" fill="#FFFACD" stroke="#000" stroke-width="2"/>
+  <circle cx="80" cy="95" r="11" fill="#FFF8DC" stroke="#000" stroke-width="2"/>
+  <circle cx="100" cy="90" r="12" fill="#FFFACD" stroke="#000" stroke-width="2"/>
+  <circle cx="120" cy="95" r="11" fill="#FFF8DC" stroke="#000" stroke-width="2"/>
+  
+  <!-- Watch/Clock face -->
+  <circle cx="100" cy="50" r="30" fill="#FFF" stroke="#000" stroke-width="4"/>
+  <circle cx="100" cy="50" r="35" fill="none" stroke="#000" stroke-width="3"/>
+  
+  <!-- Watch band -->
+  <rect x="95" y="15" width="10" height="10" fill="#333" stroke="#000" stroke-width="2"/>
+  <path d="M 95 20 L 85 30 L 85 40 L 95 50" fill="#333" stroke="#000" stroke-width="2"/>
+  <path d="M 105 20 L 115 30 L 115 40 L 105 50" fill="#333" stroke="#000" stroke-width="2"/>
+  
+  <!-- Clock markers -->
+  <line x1="100" y1="25" x2="100" y2="30" stroke="#000" stroke-width="2"/>
+  <line x1="100" y1="70" x2="100" y2="75" stroke="#000" stroke-width="2"/>
+  <line x1="75" y1="50" x2="80" y2="50" stroke="#000" stroke-width="2"/>
+  <line x1="120" y1="50" x2="125" y2="50" stroke="#000" stroke-width="2"/>
+  
+  <!-- Clock hands -->
+  <line x1="100" y1="50" x2="100" y2="35" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+  <line x1="100" y1="50" x2="112" y2="50" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Glasses -->
+  <ellipse cx="90" cy="48" rx="8" ry="10" fill="none" stroke="#000" stroke-width="3"/>
+  <ellipse cx="110" cy="48" rx="8" ry="10" fill="none" stroke="#000" stroke-width="3"/>
+  <line x1="98" y1="48" x2="102" y2="48" stroke="#000" stroke-width="3"/>
+  
+  <!-- Smile -->
+  <path d="M 92 55 Q 100 58 108 55" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"/>
+</svg>

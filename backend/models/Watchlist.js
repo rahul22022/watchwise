@@ -18,6 +18,9 @@ const watchlistSchema = new mongoose.Schema({
     type: String,
     enum: ['Movie', 'TV Show']
   },
+  platform: {
+    type: String
+  },
   status: {
     type: String,
     enum: ['Want to Watch', 'Currently Watching', 'Completed'],

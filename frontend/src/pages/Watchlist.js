@@ -13,6 +13,7 @@ function Watchlist() {
   const [customEntry, setCustomEntry] = useState({
     customTitle: '',
     customType: 'Movie',
+    platform: '',
     status: 'Want to Watch',
     priority: 'Medium'
   });
@@ -112,6 +113,7 @@ function Watchlist() {
       setCustomEntry({
         customTitle: '',
         customType: 'Movie',
+        platform: '',
         status: 'Want to Watch',
         priority: 'Medium'
       });
@@ -260,6 +262,24 @@ function Watchlist() {
                   >
                     <option value="Movie">Movie</option>
                     <option value="TV Show">TV Show</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Platform (Where to watch)</label>
+                  <select
+                    value={customEntry.platform}
+                    onChange={(e) => setCustomEntry({ ...customEntry, platform: e.target.value })}
+                  >
+                    <option value="">Select Platform (Optional)</option>
+                    <option value="Netflix">Netflix</option>
+                    <option value="HBO Max">HBO Max</option>
+                    <option value="Prime Video">Prime Video</option>
+                    <option value="Peacock">Peacock</option>
+                    <option value="Disney+">Disney+</option>
+                    <option value="Hulu">Hulu</option>
+                    <option value="Apple TV+">Apple TV+</option>
+                    <option value="Paramount+">Paramount+</option>
                   </select>
                 </div>
 

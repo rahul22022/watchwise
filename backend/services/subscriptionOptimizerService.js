@@ -674,18 +674,40 @@ ALTERNATIVES: [Other suggestions]`;
       total: nextMonthTotal
     };
 
-    // Create 3-month schedule with watchlist content
+    // Create 3-month schedule with rotating subscriptions
     const threeMonthSchedule = [];
     const today = new Date();
+    
+    // Determine how many subscriptions to keep active per month
+    const subsPerMonth = Math.max(1, Math.min(2, Math.floor(validSubscriptions.length / 2)));
     
     for (let i = 0; i < 3; i++) {
       const monthDate = new Date(today.getFullYear(), today.getMonth() + i, 1);
       const monthName = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       
-      // Month 1: current subscriptions, Months 2-3: recommended subscriptions
-      const monthSubscriptions = i === 0 ? validSubscriptions : finalSubsToKeep;
+      let monthSubscriptions;
+      let monthTotal;
+      
+      if (i === 0) {
+        // Month 1: Keep current subscriptions
+        monthSubscriptions = validSubscriptions;
+        monthTotal = actualCurrentSpending;
+      } else {
+        // Months 2-3: Rotate different subscriptions each month
+        // Use round-robin rotation through scored subscriptions
+        const startIndex = ((i - 1) * subsPerMonth) % subsWithScores.length;
+        const rotatedSubs = [];
+        
+        for (let j = 0; j < subsPerMonth && rotatedSubs.length < subsWithScores.length; j++) {
+          const index = (startIndex + j) % subsWithScores.length;
+          rotatedSubs.push(subsWithScores[index].sub);
+        }
+        
+        monthSubscriptions = rotatedSubs;
+        monthTotal = rotatedSubs.reduce((sum, sub) => sum + (Number(sub.cost) || 0), 0);
+      }
+      
       const activePlatforms = monthSubscriptions.map(s => s.name);
-      const monthTotal = i === 0 ? actualCurrentSpending : nextMonthTotal;
 
       // Find watchlist items available this month
       const availableContent = watchlist.filter(item => 
@@ -697,10 +719,21 @@ ALTERNATIVES: [Other suggestions]`;
         status: item.status
       }));
 
+      // Find watchlist items NOT available this month (wait for later)
+      const waitingContent = watchlist.filter(item => 
+        item.platform && !activePlatforms.includes(item.platform)
+      ).slice(0, 10).map(item => ({
+        title: item.customTitle || 'Untitled',
+        platform: item.platform,
+        type: item.customType || item.type || 'TV Show',
+        status: item.status
+      }));
+
       console.log(`Month ${i + 1} (${monthName}):`, {
-        subscriptions: monthSubscriptions.length,
+        subscriptions: monthSubscriptions.map(s => s.name),
         total: monthTotal,
-        content: availableContent.length
+        availableContent: availableContent.length,
+        waitingContent: waitingContent.length
       });
 
       threeMonthSchedule.push({
@@ -713,16 +746,23 @@ ALTERNATIVES: [Other suggestions]`;
         })),
         total: monthTotal,
         availableContent,
-        contentCount: availableContent.length
+        contentCount: availableContent.length,
+        waitingContent,
+        waitingCount: waitingContent.length
       });
     }
+    
+    // Recalculate savings based on average of months 2-3
+    const futureMonthsAvg = threeMonthSchedule.length >= 3 
+      ? (threeMonthSchedule[1].total + threeMonthSchedule[2].total) / 2 
+      : nextMonthTotal;
 
-    const monthlySavings = Math.max(0, actualCurrentSpending - nextMonthTotal);
+    const monthlySavings = Math.max(0, actualCurrentSpending - futureMonthsAvg);
     const yearlySavings = monthlySavings * 12;
 
     console.log('Final breakdown:', {
       currentTotal: actualCurrentSpending,
-      nextTotal: nextMonthTotal,
+      futureAvg: futureMonthsAvg,
       monthlySavings,
       yearlySavings,
       scheduleLength: threeMonthSchedule.length
